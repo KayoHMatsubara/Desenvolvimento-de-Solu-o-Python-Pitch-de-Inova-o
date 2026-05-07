@@ -1,62 +1,74 @@
 import os
 from pathlib import Path
-import pandas as pd # Usaremos pandas apenas para a conversão final se for XLSX
+import pandas as pd # Biblioteca utilizada para a conversão final caso o formato escolhido seja XLSX
 
 def quebrar_planilha_v2():
+    # Define o caminho do diretório onde o arquivo original está localizado
     diretorio_base = Path(r"C:\Users\ADMIN\Desktop\BASE")
+    # Define o arquivo de origem (CSV) e o caminho da pasta onde as partes serão salvas
     arquivo_base = diretorio_base / "BASE.csv"
     pasta_destino = diretorio_base / "partição"
 
+    # Verifica se a pasta de destino existe; caso contrário, ela é criada
     if not pasta_destino.exists():
         pasta_destino.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Lendo a base como texto para garantir que nada mude (inclusive números grandes)
+        # Abre o arquivo CSV original em modo de leitura com codificação utf-8-sig
+        # O uso de texto puro evita que números grandes sejam convertidos cientificamente
         with open(arquivo_base, 'r', encoding='utf-8-sig') as f:
             linhas = f.readlines()
 
+        # Valida se o arquivo possui conteúdo antes de prosseguir
         if not linhas:
-            print("❌ O arquivo está vazio!")
+            print("O arquivo está vazio!")
             return
 
+        # Separa a primeira linha como cabeçalho e as demais como registros de dados
         cabecalho = linhas[0]
         dados = linhas[1:]
         total_dados = len(dados)
         
-        print(f"📊 Total de registros: {total_dados}")
-        num_quebra = int(input("🔢 Quantas linhas por arquivo? "))
+        print(f"Total de registros: {total_dados}")
+        # Solicita ao usuário a quantidade de linhas que cada novo arquivo deve conter
+        num_quebra = int(input("Quantas linhas por arquivo? "))
         
-        # --- NOVA PERGUNTA ---
-        formato = input("📄 Salvar em .csv? [s/n] (n = salvará em .xlsx): ").strip().lower()
+        # Pergunta ao usuário o formato de saída desejado
+        formato = input("Salvar em .csv? [s/n] (n = salvará em .xlsx): ").strip().lower()
         extensao = ".csv" if formato == 's' else ".xlsx"
-        # ---------------------
 
         contador = 1
+        # Inicia o loop para fatiar a lista de dados com base no número de quebras definido
         for i in range(0, total_dados, num_quebra):
+            # Define o intervalo (fatia) de dados para o arquivo atual
             fatia = dados[i : i + num_quebra]
             nome_saida = pasta_destino / f"particao_{contador}{extensao}"
             
             if extensao == ".csv":
-                # Salva como texto puro (rápido e seguro)
+                # Escrita direta em formato texto para manter a rapidez e integridade do CSV
                 with open(nome_saida, 'w', encoding='utf-8-sig') as f_out:
                     f_out.write(cabecalho)
                     f_out.writelines(fatia)
             else:
-                # Converte o pedaço para Excel usando Pandas
-                # Criamos um DataFrame temporário para a fatia
+                # Processo de conversão para Excel utilizando Pandas
                 from io import StringIO
+                # Junta o cabeçalho e a fatia de dados em uma única string
                 conteudo_fatia = cabecalho + "".join(fatia)
-                # sep=None detecta se a base original usa ; ou ,
+                # Lê a string como um DataFrame, garantindo que todos os campos sejam tratados como texto (dtype=str)
+                # sep=None permite que o motor do pandas identifique o delimitador automaticamente
                 df_temp = pd.read_csv(StringIO(conteudo_fatia), sep=None, engine='python', dtype=str)
+                # Exporta o DataFrame para um arquivo .xlsx sem incluir o índice do Pandas
                 df_temp.to_excel(nome_saida, index=False)
             
-            print(f"✅ Gerado: {nome_saida.name}")
+            print(f"Gerado: {nome_saida.name}")
             contador += 1
 
-        print(f"\n🚀 Finalizado! Arquivos salvos em {extensao} na pasta 'partição'.")
+        print(f"\nFinalizado! Arquivos salvos em {extensao} na pasta 'partição'.")
 
     except Exception as e:
-        print(f"⚠️ Deu erro: {e}")
+        # Captura e exibe eventuais erros durante a execução (ex: arquivo aberto ou permissão negada)
+        print(f"Deu erro: {e}")
 
 if __name__ == "__main__":
+    # Executa a função principal
     quebrar_planilha_v2()
