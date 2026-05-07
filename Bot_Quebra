@@ -1,0 +1,62 @@
+import os
+from pathlib import Path
+import pandas as pd # Usaremos pandas apenas para a conversão final se for XLSX
+
+def quebrar_planilha_v2():
+    diretorio_base = Path(r"C:\Users\ADMIN\Desktop\BASE")
+    arquivo_base = diretorio_base / "BASE.csv"
+    pasta_destino = diretorio_base / "partição"
+
+    if not pasta_destino.exists():
+        pasta_destino.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # Lendo a base como texto para garantir que nada mude (inclusive números grandes)
+        with open(arquivo_base, 'r', encoding='utf-8-sig') as f:
+            linhas = f.readlines()
+
+        if not linhas:
+            print("❌ O arquivo está vazio!")
+            return
+
+        cabecalho = linhas[0]
+        dados = linhas[1:]
+        total_dados = len(dados)
+        
+        print(f"📊 Total de registros: {total_dados}")
+        num_quebra = int(input("🔢 Quantas linhas por arquivo? "))
+        
+        # --- NOVA PERGUNTA ---
+        formato = input("📄 Salvar em .csv? [s/n] (n = salvará em .xlsx): ").strip().lower()
+        extensao = ".csv" if formato == 's' else ".xlsx"
+        # ---------------------
+
+        contador = 1
+        for i in range(0, total_dados, num_quebra):
+            fatia = dados[i : i + num_quebra]
+            nome_saida = pasta_destino / f"particao_{contador}{extensao}"
+            
+            if extensao == ".csv":
+                # Salva como texto puro (rápido e seguro)
+                with open(nome_saida, 'w', encoding='utf-8-sig') as f_out:
+                    f_out.write(cabecalho)
+                    f_out.writelines(fatia)
+            else:
+                # Converte o pedaço para Excel usando Pandas
+                # Criamos um DataFrame temporário para a fatia
+                from io import StringIO
+                conteudo_fatia = cabecalho + "".join(fatia)
+                # sep=None detecta se a base original usa ; ou ,
+                df_temp = pd.read_csv(StringIO(conteudo_fatia), sep=None, engine='python', dtype=str)
+                df_temp.to_excel(nome_saida, index=False)
+            
+            print(f"✅ Gerado: {nome_saida.name}")
+            contador += 1
+
+        print(f"\n🚀 Finalizado! Arquivos salvos em {extensao} na pasta 'partição'.")
+
+    except Exception as e:
+        print(f"⚠️ Deu erro: {e}")
+
+if __name__ == "__main__":
+    quebrar_planilha_v2()
